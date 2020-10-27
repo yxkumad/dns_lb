@@ -1,7 +1,7 @@
 # dns_lb
 DNS Loadbalance by using Cloudflare API and go-torch
 
-Required: 
+Requires: 
 https://github.com/TorchPing/go-torch
 
 Based on: 
