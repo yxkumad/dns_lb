@@ -8,7 +8,7 @@ set -o pipefail
 # run `crontab -e` and add next line:
 # */1 * * * * /usr/local/bin/dns_lb_huaweicloud.sh >/dev/null 2>&1
 # or you need log:
-# */1 * * * * /usr/local/bin/dns_lb_huaweicloud.sh >> /var/log/dns_lb.log 2>&1
+# */1 * * * * /usr/local/bin/dns_lb_huaweicloud.sh >> /var/log/dns_lb_huaweicloud.log 2>&1
 
 # Configuration
 
