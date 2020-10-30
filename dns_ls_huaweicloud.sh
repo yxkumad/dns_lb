@@ -4,7 +4,7 @@ set -o nounset
 set -o pipefail
 
 # Place at:
-# curl https://raw.githubusercontent.com/yxkumad/dns_lb/master/dns_lb_huaweicloud.sh > /usr/local/bin/dns_lb_huaweicloud && chmod +x /usr/local/bin/dns_lb_huaweicloud.sh
+# curl https://raw.githubusercontent.com/yxkumad/dns_lb/master/dns_lb_huaweicloud.sh > /usr/local/bin/dns_lb_huaweicloud.sh && chmod +x /usr/local/bin/dns_lb_huaweicloud.sh
 # run `crontab -e` and add next line:
 # */1 * * * * /usr/local/bin/dns_lb_huaweicloud.sh >/dev/null 2>&1
 # or you need log:
