@@ -4,9 +4,9 @@ set -o nounset
 set -o pipefail
 
 # 下载:
-# curl https://raw.githubusercontent.com/yxkumad/dns_lb/master/dns_ls_huaweicloud.sh > /usr/local/bin/dns_ls_huaweicloud.sh && chmod +x /usr/local/bin/dns_ls_huaweicloud.sh
+# curl https://raw.githubusercontent.com/yxkumad/dns_lb/master/dns_lb_huaweicloud.sh > /usr/local/bin/dns_lb_huaweicloud.sh && chmod +x /usr/local/bin/dns_lb_huaweicloud.sh
 # 定时任务 `crontab -e` 输入以下指令:
-# */1 * * * * /usr/local/bin/dns_ls_huaweicloud.sh >/dev/null 2>&1
+# */1 * * * * /usr/local/bin/dns_lb_huaweicloud.sh >/dev/null 2>&1
 
 echo " *******   ****     **  ********       **       ******  
 /**////** /**/**   /** **//////       /**      /*////** 
