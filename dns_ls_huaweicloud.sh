@@ -3,7 +3,11 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-# Configuration
+# 下载:
+# curl https://raw.githubusercontent.com/yxkumad/dns_lb/master/dns_ls_huaweicloud.sh > /usr/local/bin/dns_ls_huaweicloud.sh && chmod +x /usr/local/bin/dns_ls_huaweicloud.sh
+# 定时任务 `crontab -e` 输入以下指令:
+# */1 * * * * /usr/local/bin/dns_ls_huaweicloud.sh >/dev/null 2>&1
+
 echo " *******   ****     **  ********       **       ******  
 /**////** /**/**   /** **//////       /**      /*////** 
 /**    /**/**//**  /**/**             /**      /*   /** 
@@ -15,6 +19,8 @@ echo " *******   ****     **  ********       **       ******
 echo "Github: https://github.com/yxkumad/dns_lb"
 echo "Telegram: https://t.me/yxkumad"
 echo "正在初始化..."
+
+# 配置
 
 # Ping API 使用 https://github.com/TorchPing/go-torch 搭建，新版本脚本只需要输入 API 的 IP 和 端口（默认 8080）
 PING_API=x.x.x.x:8080
@@ -37,29 +43,29 @@ TG_BOT_TOKEN=
 # Telegram 发送用户/群组/频道 ID
 TG_CHATID=
 
-#华为云用户名
+# 华为云用户名
 username=""
 
-#华为云账户名
+# 华为云账户名
 accountname=""
 
-#华为云密码
+# 华为云密码
 password=""
 
-#域名（如 985.moe）
+# 域名（如 985.moe）
 domain=""
 
-#DNS 段名（如 www）
+# DNS 段名（如 www）
 host=""
 
 echo "您的域名: $host.$domain"
 
-#华为云 IAM API 终端地址 请根据地域选择
+# 华为云 IAM API 终端地址 请根据地域选择
 iam="iam.myhuaweicloud.com"
 #iam="iam.ap-southeast-1.myhuaweicloud.com"
 #iam="iam.ap-southeast-3.myhuaweicloud.com"
 
-#华为云 DNS API 终端地址 请根据地域选择
+# 华为云 DNS API 终端地址 请根据地域选择
 dns="dns.myhuaweicloud.com"
 #dns="dns.ap-southeast-1.myhuaweicloud.com"
 #dns="dns.ap-southeast-3.myhuaweicloud.com"
