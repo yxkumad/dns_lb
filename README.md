@@ -2,6 +2,13 @@
 
 由 Cloudflare API 或 华为云 API 加 go-torch 实现的 DNS 负载均衡
 
+## 更新
+2020-03-02
+1.1.0
+1. 汉化
+2. 故障统计
+3. 美化
+
 ## 配置
 Cloudflare DNS
 ```
