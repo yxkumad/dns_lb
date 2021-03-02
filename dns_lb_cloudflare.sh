@@ -3,7 +3,11 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-# Configuration
+# 下载:
+# curl https://raw.githubusercontent.com/yxkumad/dns_lb/master/dns_ls_huaweicloud.sh > /usr/local/bin/dns_ls_huaweicloud.sh && chmod +x /usr/local/bin/dns_ls_huaweicloud.sh
+# 定时任务 `crontab -e` 输入以下指令:
+# */1 * * * * /usr/local/bin/dns_ls_huaweicloud.sh >/dev/null 2>&1
+
 echo " *******   ****     **  ********       **       ******  
 /**////** /**/**   /** **//////       /**      /*////** 
 /**    /**/**//**  /**/**             /**      /*   /** 
@@ -15,6 +19,8 @@ echo " *******   ****     **  ********       **       ******
 echo "Github: https://github.com/yxkumad/dns_lb"
 echo "Telegram: https://t.me/yxkumad"
 echo "正在初始化..."
+
+# 配置
 
 # Ping API 使用 https://github.com/TorchPing/go-torch 搭建，新版本脚本只需要输入 API 的 IP 和 端口（默认 8080）
 PING_API=x.x.x.x:8080
@@ -37,78 +43,69 @@ TG_BOT_TOKEN=
 # Telegram 发送用户/群组/频道 ID
 TG_CHATID=
 
-#华为云用户名
-username=""
+# Cloudflare API key，参考 https://www.cloudflare.com/a/account/my-account
+CFKEY=
 
-#华为云账户名
-accountname=""
+# Cloudflare 邮箱（如 user@example.com）
+CFUSER=
 
-#华为云密码
-password=""
+# 域名（如 985.moe）
+CFZONE_NAME=
 
-#域名（如 985.moe）
-domain=""
+# 域名（连子域名，如 www.985.moe）
+CFRECORD_NAME=
 
-#DNS 段名（如 www）
-host=""
+# DNS 记录（A(IPv4)|AAAA(IPv6)，默认为 A(IPv4)）
+CFRECORD_TYPE=A
 
-echo "您的域名: $host.$domain"
+# TTL（120 至 86400 秒）
+CFTTL=120
 
-#华为云 IAM API 终端地址 请根据地域选择
-iam="iam.myhuaweicloud.com"
-#iam="iam.ap-southeast-1.myhuaweicloud.com"
-#iam="iam.ap-southeast-3.myhuaweicloud.com"
+echo "您的域名: $CFRECORD_NAME"
+echo "正在获取 CLoudflare 资源 ID..."
 
-#华为云 DNS API 终端地址 请根据地域选择
-dns="dns.myhuaweicloud.com"
-#dns="dns.ap-southeast-1.myhuaweicloud.com"
-#dns="dns.ap-southeast-3.myhuaweicloud.com"
+# If required settings are missing just exit
+if [ "$CFKEY" = "" ]; then
+  echo "Missing api-key, get at: https://www.cloudflare.com/a/account/my-account"
+  echo "and save in ${0} or using the -k flag"
+  exit 2
+fi
+if [ "$CFUSER" = "" ]; then
+  echo "Missing username, probably your email-address"
+  echo "and save in ${0} or using the -u flag"
+  exit 2
+fi
+if [ "$CFRECORD_NAME" = "" ]; then 
+  echo "Missing hostname, what host do you want to update?"
+  echo "save in ${0} or using the -h flag"
+  exit 2
+fi
+# If the hostname is not a FQDN
+if [ "$CFRECORD_NAME" != "$CFZONE_NAME" ] && ! [ -z "${CFRECORD_NAME##*$CFZONE_NAME}" ]; then
+  CFRECORD_NAME="$CFRECORD_NAME.$CFZONE_NAME"
+  echo " => Hostname is not a FQDN, assuming $CFRECORD_NAME"
+fi
+# Get zone_identifier & record_identifier
+ID_FILE=$HOME/.cf-id_$CFRECORD_NAME.txt
+if [ -f $ID_FILE ] && [ $(wc -l $ID_FILE | cut -d " " -f 1) == 4 ] \
+  && [ "$(sed -n '3,1p' "$ID_FILE")" == "$CFZONE_NAME" ] \
+  && [ "$(sed -n '4,1p' "$ID_FILE")" == "$CFRECORD_NAME" ]; then
+    CFZONE_ID=$(sed -n '1,1p' "$ID_FILE")
+    CFRECORD_ID=$(sed -n '2,1p' "$ID_FILE")
+else
+    echo "Updating zone_identifier & record_identifier"
+    CFZONE_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=$CFZONE_NAME" -H "X-Auth-Email: $CFUSER" -H "X-Auth-Key: $CFKEY" -H "Content-Type: application/json" | grep -Po '(?<="id":")[^"]*' | head -1 )
+    CFRECORD_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$CFZONE_ID/dns_records?name=$CFRECORD_NAME" -H "X-Auth-Email: $CFUSER" -H "X-Auth-Key: $CFKEY" -H "Content-Type: application/json"  | grep -Po '(?<="id":")[^"]*' | head -1 )
+    echo "$CFZONE_ID" > $ID_FILE
+    echo "$CFRECORD_ID" >> $ID_FILE
+    echo "$CFZONE_NAME" >> $ID_FILE
+    echo "$CFRECORD_NAME" >> $ID_FILE
+fi
 
-echo "正在获取华为云 Token..."
-
-token_X="$(
-    curl -L -k -s -D - -X POST \
-        "https://$iam/v3/auth/tokens" \
-        -H 'content-type: application/json' \
-        -d '{
-    "auth": {
-        "identity": {
-            "methods": ["password"],
-            "password": {
-                "user": {
-                    "name": "'$username'",
-                    "password": "'$password'",
-                    "domain": {
-                        "name": "'$accountname'"
-                    }
-                }
-            }
-        },
-        "scope": {
-            "domain": {
-                "name": "'$accountname'"
-            }
-        }
-    }
-  }' | grep X-Subject-Token
-)"
-
-token="$(echo $token_X | awk -F ' ' '{print $2}')"
-
-echo "获取华为云 Token 完成"
-
-recordsets="$(
-    curl -L -k -s -D - \
-        "https://$dns/v2/recordsets?name=$host.$domain." \
-        -H 'content-type: application/json' \
-        -H 'X-Auth-Token: '$token | grep -o "id\":\"[0-9a-z]*\"" | awk -F : '{print $2}' | grep -o "[a-z0-9]*"
-)"
-
-RECORDSET_ID=$(echo $recordsets | cut -d ' ' -f 1)
-ZONE_ID=$(echo $recordsets | cut -d ' ' -f 2 | cut -d ' ' -f 2)
+echo "获取 Cloudflare 资源 ID 完成"
 
 # 存放 IP 文件
-PRESENT_IP_FILE=$HOME/.ip_$host.$domain.txt
+PRESENT_IP_FILE=$HOME/.ip_$CFRECORD_NAME.txt
 if [ -f $PRESENT_IP_FILE ]; then
   OLD_PRESENT_IP=`cat $PRESENT_IP_FILE`
 else
@@ -121,7 +118,7 @@ echo "正在检测服务器 $ORG_IP 的状态..."
 CHECK=$(curl -s "http://$PING_API/ping/$ORG_IP/$PORT")
 
 # 存放故障次数文件
-ERROR=$HOME/.error_$host.$domain.txt
+ERROR=$HOME/.error_$CFRECORD_NAME.txt
 
 if [ "$(echo $CHECK | grep "\"status\":true")" != "" ]; then
   if [ "$ORG_IP" = "$OLD_PRESENT_IP" ]; then
@@ -129,13 +126,13 @@ if [ "$(echo $CHECK | grep "\"status\":true")" != "" ]; then
     exit 0
   fi
   echo "原服务器 $ORG_IP 的状态已回复正常，正在切换 DNS 解析至原服务器 $ORG_IP"
-  RESPONSE=$(curl -X PUT -L -k -s \
-    "https://$dns/v2/zones/$ZONE_ID/recordsets/$RECORDSET_ID" \
-    -H "Content-Type: application/json" \
-    -H "X-Auth-Token: $token" \
-    -d "{\"records\": [\"$ORG_IP\"],\"ttl\": 1}")  
+  RESPONSE=$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$CFZONE_ID/dns_records/$CFRECORD_ID" \
+  -H "X-Auth-Email: $CFUSER" \
+  -H "X-Auth-Key: $CFKEY" \
+  -H "Content-Type: application/json" \
+  --data "{\"id\":\"$CFZONE_ID\",\"type\":\"$CFRECORD_TYPE\",\"name\":\"$CFRECORD_NAME\",\"content\":\"$ORG_IP\", \"ttl\":$CFTTL}")  
   echo "正在发送信息到 Telegram..."
-  curl -s "https://api.telegram.org/bot$TG_BOT_TOKEN/sendMessage?chat_id=$TG_CHATID&text=域名 $host.$domain 的原服务器 $ORG_IP 的状态已回复正常，正在切换 DNS 解析至原服务器 $ORG_IP"
+  curl -s "https://api.telegram.org/bot$TG_BOT_TOKEN/sendMessage?chat_id=$TG_CHATID&text=域名 $CFRECORD_NAME 的原服务器 $ORG_IP 的状态已回复正常，正在切换 DNS 解析至原服务器 $ORG_IP"
   echo "0" > $ERROR 
   echo $ORG_IP > $PRESENT_IP_FILE
 else
@@ -144,13 +141,13 @@ else
         exit 0
   elif [ `cat $ERROR` -eq 1 ]; then
     echo "原服务器 $ORG_IP 的状态为异常，并已累计 1 次故障次数，正在切换 DNS 解析至备用服务器 $FAIL_IP"
-    RESPONSE=$(curl -X PUT -L -k -s \
-      "https://$dns/v2/zones/$ZONE_ID/recordsets/$RECORDSET_ID" \
-      -H "Content-Type: application/json" \
-      -H "X-Auth-Token: $token" \
-      -d "{\"records\": [\"$FAIL_IP\"],\"ttl\": 1}") 
+    RESPONSE=$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$CFZONE_ID/dns_records/$CFRECORD_ID" \
+    -H "X-Auth-Email: $CFUSER" \
+    -H "X-Auth-Key: $CFKEY" \
+    -H "Content-Type: application/json" \
+    --data "{\"id\":\"$CFZONE_ID\",\"type\":\"$CFRECORD_TYPE\",\"name\":\"$CFRECORD_NAME\",\"content\":\"$FAIL_IP\", \"ttl\":$CFTTL}")
     echo "正在发送信息到 Telegram..."
-    curl -s "https://api.telegram.org/bot$TG_BOT_TOKEN/sendMessage?chat_id=$TG_CHATID&text=域名 $host.$domain 的原服务器 $ORG_IP 的状态为异常并已累计 1 次故障次数，正在切换 DNS 解析至备用服务器 $FAIL_IP"
+    curl -s "https://api.telegram.org/bot$TG_BOT_TOKEN/sendMessage?chat_id=$TG_CHATID&text=域名 $CFRECORD_NAME 的原服务器 $ORG_IP 的状态为异常并已累计 1 次故障次数，正在切换 DNS 解析至备用服务器 $FAIL_IP"
     echo $FAIL_IP > $PRESENT_IP_FILE
   else
     echo "1" > $ERROR  
